@@ -1,0 +1,77 @@
+# Summer 2023 Orchid Pod Data
+# Written by Trinity Atkins 11/06/2023
+
+c <- file.choose("Overview_data_set_(adjust_for_R)")
+flwrfrt23 <- read.csv(c) #Add data set
+
+head(flwrfrt23) #Look at top few lines
+str(flwrfrt23) #Display summary of output
+
+flwrfrt23$C1Height <- as.numeric(flwrfrt23$C1Height) #convert height to numeric values 
+names(flwrfrt23)
+
+flwrfrt23$C1_open_flwrs <- as.numeric(flwrfrt23$C1_open_flwrs) #convert to numeric values
+flwrfrt23$C1_buds  <- as.numeric(flwrfrt23$C1_buds) 
+flwrfrt23$C2_open_flwrs <- as.numeric(flwrfrt23$C2_open_flwrs)
+flwrfrt23$C2_buds <- as.numeric(flwrfrt23$C2_buds)
+
+str(flwrfrt23) #Check to see what needs to be converted to numeric values (dots
+
+flwrfrt23$FC_swollenfrt <- as.numeric(flwrfrt23$FC_swollenfrt) #convert to numeric values
+flwrfrt23$FC_undev <- as.numeric(flwrfrt23$FC_undev)
+flwrfrt23$FC_halfway <- as.numeric(flwrfrt23$FC_halfway)
+
+#Making New Data Subsets
+#install.packages("dplyr") #Install packages
+
+library(tidyr) #Load packages
+library(dplyr)  
+
+flwrfrt_subset <- dplyr::select(flwrfrt23, Population, PlantID, C1Height, # make subset dataset without fate columns   
+      C1_open_flwrs, C1_buds, C2_open_flwrs, C2_buds, 
+      FC_swollenfrt, FC_undev, FC_halfway) 
+head(flwrfrt_subset)
+
+flwrfrt_subset <- flwrfrt_subset %>% mutate(C1_open_flwrs = ifelse(is.na(C1_open_flwrs), 0, C1_open_flwrs), # replace NA entries with zeros
+      C1_buds = ifelse(is.na(C1_buds), 0, C1_buds),
+      C2_open_flwrs = ifelse(is.na(C2_open_flwrs), 0, C2_open_flwrs),
+      C2_buds = ifelse(is.na(C2_buds), 0, C2_buds),
+      FC_swollenfrt = ifelse(is.na(FC_swollenfrt), 0, FC_swollenfrt),
+      FC_undev = ifelse(is.na(FC_undev), 0, FC_undev), 
+      C1Height = ifelse(is.na(C1Height), 0, C1Height),
+      FC_halfway = ifelse(is.na(FC_halfway), 0, FC_halfway)) 
+head(flwrfrt_subset)
+
+flwrfrt_subset <- mutate(flwrfrt_subset, C1 = C1_open_flwrs + C1_buds) # create C1 and 2 variable from two censuses
+flwrfrt_subset <- mutate(flwrfrt_subset, C2 = C2_open_flwrs + C2_buds) # create C1 and 2  variable from two censuses
+head(flwrfrt_subset)
+
+# collate flower counts across columns
+flwrfrt_subset$node <- ifelse(flwrfrt_subset$C1>=flwrfrt_subset$C2, # choose between C1 and C2
+      flwrfrt_subset$C1,flwrfrt_subset$C2) 
+
+# Make a frequency distribution of flower production
+library(ggplot2)
+ggplot(flwrfrt_subset, aes(x=node)) + geom_histogram(binwidth=1) 
+      
+#Produce a table of the four different fate frequencies grouped by population
+fate_subset <- dplyr::select(flwrfrt23, Population, PlantID,
+       Fate_MT, Fate_Herb, Fate_Hum, Fate_intact) # make subset dataset with fate columns   
+head(fate_subset)
+
+#convert chr to numeric columns
+fate_subset$Fate_MT <- as.numeric(fate_subset$Fate_MT)
+fate_subset$Fate_Herb <- as.numeric(fate_subset$Fate_Herb)
+fate_subset$Fate_Hum <- as.numeric(fate_subset$Fate_Hum)
+fate_subset$Fate_intact <- as.numeric(fate_subset$Fate_intact)
+
+#remove rows with NAs
+fate_subset <- filter(fate_subset, Fate_MT %in% c(0, 1), 
+        Fate_Herb %in% c(0,1), Fate_Hum %in% c(0,1), Fate_intact %in% c(0,1))
+View(fate_subset)
+
+# Make a table for population level fate proportions
+fate_grouped <- group_by(fate_subset, Population)   # grouping our dataset by pop
+summary2 <- summarise(fate_grouped, total.MT = sum(Fate_MT),
+         total.Herb = sum(Fate_Herb),
+         total.Hum = sum(Fate_Hum),
